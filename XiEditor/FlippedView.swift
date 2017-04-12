@@ -14,7 +14,7 @@
 
 import Cocoa
 
-class EditContainerView: NSView {
+class FlippedView: NSView {
 
     override var isFlipped: Bool {
         return true

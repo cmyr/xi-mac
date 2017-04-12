@@ -14,8 +14,8 @@
 
 import Cocoa
 /// A custom view that draws a shadow over the editView when content is clipped.
-/// Note: - if we ever move to layer-based drawing this should be handled by a layer on the EditContainerView
-class ShadowView: NSView {
+/// Note: - if we ever move to layer-based drawing this should be handled by a layer on the editContainerView
+class ShadowView: FlippedView {
     private var topShadow = false
     private var leadingShadow = false
     private var trailingShadow = false
@@ -37,10 +37,6 @@ class ShadowView: NSView {
                 context.drawLinearGradient(gradient, start: NSPoint(x: x - 1, y: 0), end: NSPoint(x: x - 4, y: 0), options: [])
             }
         }
-    }
-
-    override var isFlipped: Bool {
-        return true;
     }
     
     // shadow view shouldn't receive mouse events

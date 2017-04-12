@@ -14,17 +14,14 @@
 
 import Cocoa
 
-class GutterView: NSView {
+class GutterView: FlippedView {
     var dataSource: EditViewDataSource!
     let xPadding: CGFloat = 8
     
     private let gutterBackground = NSColor(deviceWhite: 0.9, alpha: 1.0)
     private let lineNumberDefaultTextColor = NSColor(deviceWhite: 0.5, alpha: 1.0)
     private let lineNumberCursorTextColor = NSColor.black
-    
-    override var isFlipped: Bool {
-        return true
-    }
+
     
     override func draw(_ dirtyRect: NSRect) {
         gutterBackground.setFill()

@@ -90,7 +90,7 @@ func camelCaseToUnderscored(_ name: NSString) -> NSString {
     return underscored;
 }
 
-class EditView: NSView, NSTextInputClient {
+class EditView: FlippedView, NSTextInputClient {
     var dataSource: EditViewDataSource!
 
     var textSelectionColor: NSColor {
@@ -251,11 +251,6 @@ class EditView: NSView, NSTextInputClient {
     }
 
     override var acceptsFirstResponder: Bool {
-        return true;
-    }
-
-    // we use a flipped coordinate system primarily to get better alignment when scrolling
-    override var isFlipped: Bool {
         return true;
     }
     

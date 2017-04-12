@@ -29,7 +29,7 @@ class EditViewController: NSViewController, EditViewDataSource {
     
     @IBOutlet var shadowView: ShadowView!
     @IBOutlet var scrollView: NSScrollView!
-    @IBOutlet weak var editContainerView: EditContainerView!
+    @IBOutlet weak var editContainerView: FlippedView!
     @IBOutlet var editView: EditView!
     @IBOutlet weak var gutterView: GutterView!
     
