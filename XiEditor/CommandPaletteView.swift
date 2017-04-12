@@ -15,7 +15,7 @@
 import Cocoa
 
 class CommandPaletteView: FlippedView {
-
+    let cornerRadius: CGFloat = 5
     override var wantsUpdateLayer: Bool {
         return true
     }
@@ -40,6 +40,6 @@ class CommandPaletteView: FlippedView {
     
     override func updateLayer() {
         self.layer?.backgroundColor = NSColor.white.cgColor
-        self.layer?.cornerRadius = 5.0
+        self.layer?.cornerRadius = self.cornerRadius
     }
 }

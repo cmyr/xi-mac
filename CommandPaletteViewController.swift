@@ -57,7 +57,6 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
     private var selectedIdx: Int = 0 {
         didSet {
             guard selectedIdx != oldValue else { return }
-            print("selected idx: \(selectedIdx)")
             if oldValue < self.activeItemViews.count {
                 self.activeItemViews[oldValue].isSelected = false
             }
@@ -125,7 +124,7 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
         
         self.view.frame = NSRect(
             origin: self.view.frame.origin,
-            size: CGSize(width: self.view.frame.width, height: textFieldHeight + itemViewHeight * CGFloat(nbItems)))
+            size: CGSize(width: self.view.frame.width, height: textFieldHeight + itemViewHeight * CGFloat(nbItems) + (self.view as! CommandPaletteView).cornerRadius))
         // manually reposition the command text field, or it gets clobbered when the parent view is resized
         commandTextField.frame = NSRect(x: 8, y: 13, width: commandTextField.frame.width, height: commandTextField.frame.height)
         
@@ -163,7 +162,6 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
     }
     
     private func updateResults(forQuery text: String) {
-        print("update results for: \"\(text)\"")
         self.selectedIdx = 0
         let rankings = _items.map({ (item: $0, score: $0.displayName.score(text, fuzziness: 0.5)) })
             .filter({ $0.score > 0.25 })
@@ -186,7 +184,6 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
 
     override func cancelOperation(_ sender: Any?) {
         self.selectedIdx = 0
-        print("cancel operation")
         for view in activeItemViews {
             view.removeFromSuperview()
             reusableItemViews.append(view)
