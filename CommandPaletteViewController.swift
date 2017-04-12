@@ -71,14 +71,9 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         commandTextField.delegate = self
-    }
-    
-    /// Displays the command palette within a view.
-    public func present(inView parentView: NSView) {
-        parentView.addSubview(self.view)
-        self.view.frame = NSRect(x: NSMidX(parentView.frame) - (self.view.frame.width / 2), y: 10, width: self.view.frame.width, height: self.view.frame.height)
-        parentView.window?.makeFirstResponder(commandTextField)
         self.arrowKeyEventHandler = NSEvent.addLocalMonitorForEvents(matching: NSKeyDownMask) { (event) -> NSEvent? in
+            // the monitor stays active even if we aren't visible; in that case we no-op
+            guard self.view.superview != nil else { return event }
             if let arrowKey = ArrowKey(rawValue: event.keyCode) {
                 switch arrowKey {
                 case .Up, .Down:
@@ -93,10 +88,21 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
         }
     }
     
+    deinit {
+        NSEvent.removeMonitor(arrowKeyEventHandler!)
+    }
+    
+    /// Displays the command palette within a view.
+    public func present(inView parentView: NSView) {
+        parentView.addSubview(self.view)
+        self.view.frame = NSRect(x: NSMidX(parentView.frame) - (self.view.frame.width / 2), y: 10, width: self.view.frame.width, height: self.view.frame.height)
+        self.updateResults(forQuery: commandTextField.stringValue)
+        parentView.window?.makeFirstResponder(commandTextField)
+    }
+    
     /// Closes the command palette, removing it from its superview.
     public func dismiss() {
         self.view.removeFromSuperview()
-        NSEvent.removeMonitor(arrowKeyEventHandler!)
     }
     
     private func updateItems(items: [CommandPaletteItem]) {
@@ -150,28 +156,36 @@ class CommandPaletteViewController: NSViewController, NSTextFieldDelegate {
         }
     }
     
-    override func controlTextDidChange(_ obj: Notification) {
-        let newText = commandTextField.stringValue
-        selectedIdx = 0
-        let rankings = _items.map({ (item: $0, score: $0.displayName.score(newText, fuzziness: 0.5)) })
+    private func updateResults(forQuery text: String) {
+        print("update results for: \"\(text)\"")
+        self.selectedIdx = 0
+        let rankings = _items.map({ (item: $0, score: $0.displayName.score(text, fuzziness: 0.5)) })
             .filter({ $0.score > 0.25 })
             .sorted(by: { $0.score > $1.score })
+
         updateItems(items: rankings.map({ $0.item }))
     }
+
     
-    func control(_ control: NSControl, textShouldEndEditing fieldEditor: NSText) -> Bool {
-        if self.activeItemViews.count > 0 {
-            return true
-        } else {
-            return false
-        }
+    override func controlTextDidChange(_ obj: Notification) {
+        let newText = commandTextField.stringValue
+        updateResults(forQuery: newText)
     }
-    
-    override func controlTextDidEndEditing(_ obj: Notification) {
-        self.delegate.commandPalette(self, didSelectItem: self.activeItemViews[selectedIdx].item!)
+
+    @IBAction func textFieldAction(_ sender: Any) {
+        if self.activeItemViews.count > 0 {
+            self.delegate.commandPalette(self, didSelectItem: self.activeItemViews[selectedIdx].item!)
+        }
     }
 
     override func cancelOperation(_ sender: Any?) {
+        self.selectedIdx = 0
+        print("cancel operation")
+        for view in activeItemViews {
+            view.removeFromSuperview()
+            reusableItemViews.append(view)
+        }
+        activeItemViews.removeAll()
         delegate.dismissCommandPalette(self)
     }
 }

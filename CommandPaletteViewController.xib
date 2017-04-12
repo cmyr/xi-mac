@@ -26,29 +26,12 @@
                         <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
                         <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                     </textFieldCell>
+                    <connections>
+                        <action selector="textFieldAction:" target="-2" id="dvU-ql-z51"/>
+                    </connections>
                 </textField>
             </subviews>
             <point key="canvasLocation" x="139" y="-14.5"/>
-        </customView>
-        <customView id="avV-tj-PnR" customClass="CommandPaletteItemView" customModule="XiEditor" customModuleProvider="target">
-            <rect key="frame" x="0.0" y="0.0" width="480" height="40"/>
-            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-            <subviews>
-                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" allowsCharacterPickerTouchBarItem="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3qp-Pf-BhE">
-                    <rect key="frame" x="6" y="8" width="468" height="24"/>
-                    <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" sendsActionOnEndEditing="YES" title="Label" allowsEditingTextAttributes="YES" id="gLt-JY-LCU">
-                        <font key="font" metaFont="system" size="20"/>
-                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-            </subviews>
-            <constraints>
-                <constraint firstItem="3qp-Pf-BhE" firstAttribute="centerY" secondItem="avV-tj-PnR" secondAttribute="centerY" id="FRz-gd-aSf"/>
-                <constraint firstAttribute="trailing" secondItem="3qp-Pf-BhE" secondAttribute="trailing" constant="8" id="WIb-w4-uuk"/>
-                <constraint firstItem="3qp-Pf-BhE" firstAttribute="leading" secondItem="avV-tj-PnR" secondAttribute="leading" constant="8" id="bqw-cv-ZDw"/>
-            </constraints>
-            <point key="canvasLocation" x="139" y="321"/>
         </customView>
     </objects>
 </document>
