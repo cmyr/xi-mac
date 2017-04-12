@@ -10,6 +10,11 @@
 		50370A2B1D4209F300EA1B18 /* Dispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50370A2A1D4209F300EA1B18 /* Dispatcher.swift */; };
 		6B0DCDD41E8196D0007C14A3 /* GutterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0DCDD31E8196D0007C14A3 /* GutterView.swift */; };
 		6B0DCDD61E832101007C14A3 /* FlippedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B0DCDD51E832101007C14A3 /* FlippedView.swift */; };
+		6BD024791E9D6B0300321581 /* CommandPaletteViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD024771E9D6B0300321581 /* CommandPaletteViewController.swift */; };
+		6BD0247A1E9D6B0300321581 /* CommandPaletteViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6BD024781E9D6B0300321581 /* CommandPaletteViewController.xib */; };
+		6BD0247D1E9D82A000321581 /* CommandPaletteItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD0247C1E9D82A000321581 /* CommandPaletteItemView.swift */; };
+		6BD0247F1E9DC01E00321581 /* Fuzzy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD0247E1E9DC01E00321581 /* Fuzzy.swift */; };
+		6BD024811E9E8CCE00321581 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD024801E9E8CCE00321581 /* CommandPaletteView.swift */; };
 		AE0243F61E4BDF8A00641BDA /* StyleMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE0243F51E4BDF8A00641BDA /* StyleMap.swift */; };
 		AE041BA61D4327EB0069AB8B /* xi-syntect-plugin in Resources */ = {isa = PBXBuildFile; fileRef = AE041BA51D4327EB0069AB8B /* xi-syntect-plugin */; };
 		AE168C5C1E4AD87B008249AE /* LineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE168C5B1E4AD87B008249AE /* LineCache.swift */; };
@@ -54,6 +59,11 @@
 		50370A2A1D4209F300EA1B18 /* Dispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Dispatcher.swift; sourceTree = "<group>"; };
 		6B0DCDD31E8196D0007C14A3 /* GutterView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GutterView.swift; sourceTree = "<group>"; };
 		6B0DCDD51E832101007C14A3 /* FlippedView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = FlippedView.swift; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
+		6BD024771E9D6B0300321581 /* CommandPaletteViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = CommandPaletteViewController.swift; path = ../CommandPaletteViewController.swift; sourceTree = "<group>"; };
+		6BD024781E9D6B0300321581 /* CommandPaletteViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; name = CommandPaletteViewController.xib; path = ../CommandPaletteViewController.xib; sourceTree = "<group>"; };
+		6BD0247C1E9D82A000321581 /* CommandPaletteItemView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandPaletteItemView.swift; sourceTree = "<group>"; };
+		6BD0247E1E9DC01E00321581 /* Fuzzy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Fuzzy.swift; path = ../third_party/Fuzzy.swift; sourceTree = "<group>"; };
+		6BD024801E9E8CCE00321581 /* CommandPaletteView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		AE0243F51E4BDF8A00641BDA /* StyleMap.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StyleMap.swift; sourceTree = "<group>"; };
 		AE041B971D4323460069AB8B /* build-rust-xcode.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = "build-rust-xcode.sh"; sourceTree = "<group>"; };
 		AE041BA51D4327EB0069AB8B /* xi-syntect-plugin */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; path = "xi-syntect-plugin"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -102,10 +112,31 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		6BD0247B1E9D6B0B00321581 /* Command Palette */ = {
+			isa = PBXGroup;
+			children = (
+				6BD0247C1E9D82A000321581 /* CommandPaletteItemView.swift */,
+				6BD024771E9D6B0300321581 /* CommandPaletteViewController.swift */,
+				6BD024801E9E8CCE00321581 /* CommandPaletteView.swift */,
+				6BD024781E9D6B0300321581 /* CommandPaletteViewController.xib */,
+			);
+			name = "Command Palette";
+			sourceTree = "<group>";
+		};
+		6BD024821E9E97A300321581 /* third party */ = {
+			isa = PBXGroup;
+			children = (
+				6BD0247E1E9DC01E00321581 /* Fuzzy.swift */,
+			);
+			name = "third party";
+			path = XiEditor;
+			sourceTree = "<group>";
+		};
 		AE499DC31C82BB2B002D68AF = {
 			isa = PBXGroup;
 			children = (
 				D023DA021CD071B40087EC0A /* xicore */,
+				6BD024821E9E97A300321581 /* third party */,
 				AE499DCE1C82BB2B002D68AF /* XiEditor */,
 				AE499DDE1C82BB2B002D68AF /* XiEditorTests */,
 				AE499DE91C82BB2B002D68AF /* XiEditorUITests */,
@@ -126,6 +157,7 @@
 		AE499DCE1C82BB2B002D68AF /* XiEditor */ = {
 			isa = PBXGroup;
 			children = (
+				6BD0247B1E9D6B0B00321581 /* Command Palette */,
 				F53EA2AE1DCAAA170071ACFD /* EditViewController.swift */,
 				6B0DCDD31E8196D0007C14A3 /* GutterView.swift */,
 				6B0DCDD51E832101007C14A3 /* FlippedView.swift */,
@@ -301,6 +333,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6BD0247A1E9D6B0300321581 /* CommandPaletteViewController.xib in Resources */,
 				F53EA2AD1DCAA8110071ACFD /* Main.storyboard in Resources */,
 				AE228F5D1C897CE7000E9B0F /* xi-core in Resources */,
 				AE041BA61D4327EB0069AB8B /* xi-syntect-plugin in Resources */,
@@ -330,15 +363,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				F53EA2AF1DCAAA170071ACFD /* EditViewController.swift in Sources */,
-				6B0DCDD61E832101007C14A3 /* EditContainerView.swift in Sources */,
+				6BD0247D1E9D82A000321581 /* CommandPaletteItemView.swift in Sources */,
 				AE0243F61E4BDF8A00641BDA /* StyleMap.swift in Sources */,
 				6B0DCDD61E832101007C14A3 /* FlippedView.swift in Sources */,
 				AE168C5C1E4AD87B008249AE /* LineCache.swift in Sources */,
 				AE499DF91C82C835002D68AF /* CoreConnection.swift in Sources */,
 				50370A2B1D4209F300EA1B18 /* Dispatcher.swift in Sources */,
+				6BD024791E9D6B0300321581 /* CommandPaletteViewController.swift in Sources */,
 				AED23F181C83CBED002246CE /* EditView.swift in Sources */,
 				AE499DD01C82BB2B002D68AF /* AppDelegate.swift in Sources */,
+				6BD0247F1E9DC01E00321581 /* Fuzzy.swift in Sources */,
 				6B0DCDD41E8196D0007C14A3 /* GutterView.swift in Sources */,
+				6BD024811E9E8CCE00321581 /* CommandPaletteView.swift in Sources */,
 				F5BDBF371DCA9D2C0042430B /* Document.swift in Sources */,
 				AEB66A791CAEFC8F002F686A /* ShadowView.swift in Sources */,
 			);

@@ -24,7 +24,7 @@ protocol EditViewDataSource {
 }
 
 
-class EditViewController: NSViewController, EditViewDataSource {
+class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDelegate {
 
     
     @IBOutlet var shadowView: ShadowView!
@@ -36,6 +36,12 @@ class EditViewController: NSViewController, EditViewDataSource {
     @IBOutlet weak var gutterViewWidth: NSLayoutConstraint!
     @IBOutlet weak var editViewHeight: NSLayoutConstraint!
     
+    lazy var commandPaletteViewController: CommandPaletteViewController! = {
+        let commandPaletteVC = CommandPaletteViewController(nibName: nil, bundle: nil)
+        commandPaletteVC?.delegate = self
+        return commandPaletteVC
+    }()
+
     var document: Document!
     
     var lines: LineCache = LineCache()
@@ -251,6 +257,22 @@ class EditViewController: NSViewController, EditViewDataSource {
     
     func redo(_ sender: AnyObject?) {
         document.sendRpcAsync("redo", params: [])
+    }
+    // MARK: - Command Palette
+    
+    @IBAction func showCommandPalette(_ sender: AnyObject) {
+        self.commandPaletteViewController.present(inView: self.view)
+    }
+    
+    func dismissCommandPalette(_ palette: CommandPaletteViewController) {
+        commandPaletteViewController.dismiss()
+        self.view.window?.makeFirstResponder(self.editContainerView)
+    }
+    
+    func commandPalette(_ palette: CommandPaletteViewController, didSelectItem selectedItem: CommandPaletteItem) {
+        print("command palette selected \(selectedItem)")
+        commandPaletteViewController.dismiss()
+        self.view.window?.makeFirstResponder(self.editContainerView)
     }
 
     // MARK: - Debug Methods
