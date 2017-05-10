@@ -80,24 +80,63 @@ extension Event {
     }
 }
 
-typealias TabIdentifier = String
+/// Identifies a given document view for routing with xi-core
+typealias ViewIdentifier = String
 
 enum Events { // namespace
-    struct NewTab: Event {
+    struct NewView: Event {
         typealias Output = String
-
-        let method = "new_tab"
-        let params: AnyObject? = nil
+        
+        let path: String?
+        let method = "new_view"
+        var params: AnyObject? {
+            guard let path = self.path else { return [:] as AnyObject }
+            return ["file_path": path] as AnyObject
+        }
         let dispatchMethod = EventDispatchMethod.sync
     }
-
-    struct DeleteTab: Event {
+    
+    struct CloseView: Event {
         typealias Output = Void
-
-        let tabId: TabIdentifier
-
-        let method = "delete_tab"
-        var params: AnyObject? { return ["tab": tabId] as AnyObject }
+        
+        let viewIdentifier: ViewIdentifier
+        
+        let method = "close_view"
+        var params: AnyObject? { return ["view_id": viewIdentifier] as AnyObject }
         let dispatchMethod = EventDispatchMethod.async
+    }
+    
+    struct Save: Event {
+        typealias Output = Void
+        
+        let viewIdentifier: ViewIdentifier
+        let path: String
+        
+        let method = "save"
+        var params: AnyObject? { return ["view_id": viewIdentifier, "file_path": path] as AnyObject }
+        let dispatchMethod = EventDispatchMethod.async
+    }
+
+    struct RunPlugin: Event {
+        typealias Output = Void
+        let viewIdentifier: ViewIdentifier
+        let plugin: String
+
+        let method = "plugin"
+        var params: AnyObject? {
+            return ["command": "start", "view_id": viewIdentifier, "plugin_name": plugin] as AnyObject
+        }
+        let dispatchMethod = EventDispatchMethod.async
+    }
+    
+    struct InitialPlugins: Event {
+        typealias Output = [String]
+        let viewIdentifier: ViewIdentifier
+        
+        let method = "plugin"
+        var params: AnyObject? {
+            return ["command": "initial_plugins", "view_id": viewIdentifier] as AnyObject
+        }
+        let dispatchMethod = EventDispatchMethod.sync
     }
 }

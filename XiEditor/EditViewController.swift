@@ -55,14 +55,20 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     var gutterWidth: CGFloat {
         return gutterViewWidth.constant
     }
-    
+
+    /// A list of plugins available to this editor.
+    var availablePlugins: [String] = [] {
+        didSet {
+            updateAvailablePlugins()
+        }
+    }
+
     // used to calculate the gutter width. Initial -1 so that a new document
     // still triggers update of gutter width.
     private var lineCount: Int = -1 {
         didSet {
             if lineCount != oldValue {
-                let gutterColumns = "\(lineCount)".characters.count
-                gutterViewWidth.constant = textMetrics.fontWidth * max(2, CGFloat(gutterColumns)) + 2 * gutterView.xPadding
+                updateGutterWidth()
             }
         }
     }
@@ -95,6 +101,7 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     override func changeFont(_ sender: Any?) {
         if let manager = sender as? NSFontManager {
             textMetrics = textMetrics.newMetricsForFontChange(fontManager: manager)
+            updateGutterWidth()
             self.editView.needsDisplay = true
         } else {
             Swift.print("changeFont: called with nil")
@@ -102,6 +109,10 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
         }
     }
 
+    func updateGutterWidth() {
+        let gutterColumns = "\(lineCount)".characters.count
+        gutterViewWidth.constant = textMetrics.fontWidth * max(2, CGFloat(gutterColumns)) + 2 * gutterView.xPadding
+    }
     
     func boundsDidChangeNotification(_ notification: Notification) {
         updateEditViewScroll()
@@ -127,6 +138,12 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     
     // MARK: - Core Commands
     func update(_ content: [String: AnyObject]) {
+        if (content["pristine"] as? Bool ?? false) {
+            document.updateChangeCount(.changeCleared)
+        } else {
+            document.updateChangeCount(.changeDone)
+        }
+
         lines.applyUpdate(update: content)
         self.lineCount = lines.height
         self.editViewHeight.constant = max(CGFloat(lines.height) * textMetrics.linespace + 2 * textMetrics.descent, scrollView.bounds.height)
@@ -148,13 +165,21 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     }
     
     override func mouseDown(with theEvent: NSEvent) {
-        editView.removeMarkedText()
+        editView.unmarkText()
         editView.inputContext?.discardMarkedText()
         let position  = editView.bufferPositionFromPoint(theEvent.locationInWindow)
         lastDragPosition = position
         let flags = theEvent.modifierFlags.rawValue >> 16
         let clickCount = theEvent.clickCount
-        document.sendRpcAsync("click", params: [position.line, position.column, flags, clickCount])
+        if theEvent.modifierFlags.contains(NSCommandKeyMask) {
+            // Note: all gestures will be moving to "gesture" rpc but for now, just toggle_sel
+            document.sendRpcAsync("gesture", params: [
+                "line": position.line,
+                "col": position.column,
+                "ty": "toggle_sel"])
+        } else {
+            document.sendRpcAsync("click", params: [position.line, position.column, flags, clickCount])
+        }
         dragTimer = Timer.scheduledTimer(timeInterval: TimeInterval(1.0/60), target: self, selector: #selector(_autoscrollTimerCallback), userInfo: nil, repeats: true)
         dragEvent = theEvent
     }
@@ -165,7 +190,7 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
         if let last = lastDragPosition, last != dragPosition {
             lastDragPosition = dragPosition
             let flags = theEvent.modifierFlags.rawValue >> 16
-            document.sendRpcAsync("drag", params: [last.line, last.column, flags])
+            document.sendRpcAsync("drag", params: [dragPosition.line, dragPosition.column, flags])
         }
         dragEvent = theEvent
     }
@@ -188,6 +213,8 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     }
 
     override func selectAll(_ sender: Any?) {
+        editView.unmarkText()
+        editView.inputContext?.discardMarkedText()
         document.sendRpcAsync("select_all", params: [])
     }
 
@@ -283,9 +310,38 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
     @IBAction func debugTestFGSpans(_ sender: AnyObject) {
         document.sendRpcAsync("debug_test_fg_spans", params: [])
     }
+
+    func runPlugin(_ sender: NSMenuItem) {
+        Events.RunPlugin(viewIdentifier: document.coreViewIdentifier!, plugin: sender.title).dispatch(document.dispatcher)
+        print("runPlugin: \(sender)")
+    }
+
+    func updateAvailablePlugins() {
+        let pluginsMenu = NSApplication.shared().mainMenu!.item(withTitle: "Debug")!.submenu!.item(withTitle: "Plugin");
+        pluginsMenu!.submenu?.removeAllItems()
+        for plugin in self.availablePlugins {
+            pluginsMenu!.submenu?.addItem(withTitle: plugin, action: #selector(EditViewController.runPlugin(_:)), keyEquivalent: "")
+        }
+    }
     
-    @IBAction func debugRunPlugin(_ sender: AnyObject) {
-        document.sendRpcAsync("debug_run_plugin", params: [])
+    @IBAction func gotoLine(_ sender: AnyObject) {
+        guard let window = self.view.window else { return }
+        
+        let alert = NSAlert.init()
+        alert.addButton(withTitle: "Ok")
+        alert.addButton(withTitle: "Cancel")
+        alert.messageText = "Goto Line"
+        alert.informativeText = "Enter line to go to:"
+        let text = NSTextField.init(frame: NSRect.init(x: 0, y: 0, width: 200, height: 24))
+        alert.accessoryView = text
+        alert.window.initialFirstResponder = text
+        
+        alert.beginSheetModal(for: window) { response in
+            if (response == NSAlertFirstButtonReturn) {
+                let line = text.intValue
+                self.document.sendRpcAsync("goto_line", params: ["line": line - 1])
+            }
+        }
     }
 }
 
@@ -294,6 +350,7 @@ class EditViewController: NSViewController, EditViewDataSource, CommandPaletteDe
 extension EditViewController: NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         editView.isFrontmostView = true
+        updateAvailablePlugins()
     }
 
     func windowDidResignKey(_ notification: Notification) {

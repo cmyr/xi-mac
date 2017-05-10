@@ -155,7 +155,7 @@ class EditView: FlippedView, NSTextInputClient {
     let font_style_italic: Int = 4;
 
     override func draw(_ dirtyRect: NSRect) {
-        if dataSource.document.tabName == nil { return }
+        if dataSource.document.coreViewIdentifier == nil { return }
         super.draw(dirtyRect)
         /*
         let path = NSBezierPath(ovalInRect: frame)
@@ -204,6 +204,8 @@ class EditView: FlippedView, NSTextInputClient {
             dataSource.styleMap.applyStyles(text: s, string: &attrString, styles: line.styles)
             for c in line.cursor {
                 let cix = utf8_offset_to_utf16(s, c)
+                // TODO: How should we handle the situations that have multi-cursor?
+                self.cursorPos = (lineIx, cix)
                 if (markedRange().location != NSNotFound) {
                     let markRangeStart = cix - markedRange().length
                     if (markRangeStart >= 0) {
@@ -257,7 +259,7 @@ class EditView: FlippedView, NSTextInputClient {
     // MARK: - NSTextInputClient protocol
     func insertText(_ aString: Any, replacementRange: NSRange) {
         self.removeMarkedText()
-        self.replaceCharactersInRange(replacementRange, withText: aString as AnyObject)
+        let _ = self.replaceCharactersInRange(replacementRange, withText: aString as AnyObject)
     }
     
     public func characterIndex(for point: NSPoint) -> Int {
