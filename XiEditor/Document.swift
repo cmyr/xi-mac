@@ -212,6 +212,13 @@ class Document: NSDocument {
 
         dispatcher.coreConnection.sendRpcAsync("plugin", params: params)
     }
+    
+//    var prevRequest = (0, 0)
+    func requestLines(first: Int, last: Int) {
+        if (first, last) == prevRequest { return }
+        prevRequest = (first, last)
+        sendRpcAsync("request_lines", params: [first, last])
+    }
 
     func update(_ content: [String: AnyObject]) {
         if let editVC = editViewController {

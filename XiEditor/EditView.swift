@@ -30,7 +30,7 @@ extension NSFont {
 }
 
 /// A store of properties used to determine the layout of text.
-struct TextDrawingMetrics {
+class TextDrawingMetrics {
     let font: NSFont
     var attributes: [NSAttributedStringKey: AnyObject] = [:]
     var ascent: CGFloat

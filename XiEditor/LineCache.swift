@@ -19,6 +19,7 @@ struct Line {
     var text: String
     var cursor: [Int]
     var styles: [StyleSpan]
+    var styledLine: CTLine
     
     /// A Boolean value representing whether this line contains selected/highlighted text.
     /// This is used to determine whether we should pre-draw its background.
@@ -31,7 +32,7 @@ struct Line {
         return cursor.count > 0
     }
 
-    init(fromJson json: [String: AnyObject]) {
+    init(fromJson json: [String: AnyObject], dataSource: EditViewDataSource) {
         // this could be a more clear exception
         text = json["text"] as! String
         cursor = json["cursor"] as? [Int] ?? []
@@ -40,9 +41,12 @@ struct Line {
         } else {
             self.styles = []
         }
+        var attrString = NSMutableAttributedString(string: text, attributes: dataSource.textMetrics.attributes)
+        dataSource.styleMap.applyStyles(text: text, string: &attrString, styles: self.styles)
+        self.styledLine = CTLineCreateWithAttributedString(attrString)
     }
 
-    init?(updateFromJson line: Line?, json: [String: AnyObject]) {
+    init?(updateFromJson line: Line?, json: [String: AnyObject], dataSource: EditViewDataSource) {
         guard let line = line else { return nil }
         self.text = line.text
         cursor = json["cursor"] as? [Int] ?? line.cursor
@@ -51,6 +55,9 @@ struct Line {
         } else {
             self.styles = line.styles
         }
+        var attrString = NSMutableAttributedString(string: self.text, attributes: dataSource.textMetrics.attributes)
+        dataSource.styleMap.applyStyles(text: self.text, string: &attrString, styles: self.styles)
+        self.styledLine = CTLineCreateWithAttributedString(attrString)
     }
 }
 
@@ -60,6 +67,8 @@ class LineCache {
     var nInvalidBefore = 0;
     var lines: [Line?] = []
     var nInvalidAfter = 0;
+
+    var dataSource: EditViewDataSource!
 
     var height: Int {
         get {
@@ -120,7 +129,7 @@ class LineCache {
                 inval.addRange(start: newInvalidBefore + newLines.count, n: n)
                 guard let json_lines = op["lines"] as? [[String: AnyObject]] else { return inval }
                 for json_line in json_lines {
-                    newLines.append(Line(fromJson: json_line))
+                    newLines.append(Line(fromJson: json_line, dataSource: self.dataSource))
                 }
             case "copy", "update":
                 var nRemaining = n
@@ -150,7 +159,7 @@ class LineCache {
                         guard let json_lines = op["lines"] as? [[String: AnyObject]] else { return inval }
                         var jsonIx = n - nRemaining
                         for ix in startIx ..< startIx + nCopy {
-                            newLines.append(Line(updateFromJson: lines[ix], json: json_lines[jsonIx]))
+                            newLines.append(Line(updateFromJson: lines[ix], json: json_lines[jsonIx], dataSource: dataSource))
                             jsonIx += 1
                         }
                     }
