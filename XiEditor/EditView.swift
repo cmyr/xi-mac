@@ -71,12 +71,16 @@ func colorFromArgb(_ argb: UInt32) -> NSColor {
         alpha: CGFloat((argb >> 24) & 0xff) * 1.0/255)
 }
 
-class EditView: NSView, NSTextInputClient {
-    var dataSource: EditViewDataSource!
+class EditView: NSView, NSTextInputClient, CALayerDelegate {
+    var dataSource: EditViewDataSource! {
+        didSet {
+            self.layer?.backgroundColor = dataSource.theme.background.cgColor
+        }
+    }
 
     var lastDragLineCol: (Int, Int)?
-    var timer: Timer?
-    var timerEvent: NSEvent?
+//    var timer: Timer?
+//    var timerEvent: NSEvent?
 
     var cursorPos: (Int, Int)?
     fileprivate var _selectedRange: NSRange
@@ -101,13 +105,13 @@ class EditView: NSView, NSTextInputClient {
     /// if set to true, this view will show blinking cursors
     var showBlinkingCursor = false {
         didSet {
-            _cursorStateOn = showBlinkingCursor
-            _blinkTimer?.invalidate()
-            if showBlinkingCursor {
-                _blinkTimer = Timer.scheduledTimer(timeInterval: TimeInterval(1.0), target: self, selector: #selector(_blinkInsertionPoint), userInfo: nil, repeats: true)
-            } else {
-                _blinkTimer = nil
-            }
+//            _cursorStateOn = showBlinkingCursor
+//            _blinkTimer?.invalidate()
+//            if showBlinkingCursor {
+//                _blinkTimer = Timer.scheduledTimer(timeInterval: TimeInterval(1.0), target: self, selector: #selector(_blinkInsertionPoint), userInfo: nil, repeats: true)
+//            } else {
+//                _blinkTimer = nil
+//            }
         }
     }
     
@@ -116,126 +120,294 @@ class EditView: NSView, NSTextInputClient {
         // theme, and seems to be ignored by sublime text anyway?
         return dataSource.theme.foreground
     }
+    
+    let LINES_PER_TILE: CGFloat = 10
+    var contentViewBounds = CGRect.zero {
+        didSet {
+            guard contentViewBounds != oldValue else { return }
 
+            let tileSize = CGSize(width: contentViewBounds.width,
+                                  height: dataSource.textMetrics.linespace * LINES_PER_TILE )
+            (self.layer as? CATiledLayer)?.tileSize = tileSize
+        }
+    }
+
+    var cursors = [CALayer]()
+    
     required init?(coder: NSCoder) {
-        
         _selectedRange = NSMakeRange(NSNotFound, 0)
         _markedRange = NSMakeRange(NSNotFound, 0)
         super.init(coder: coder)
+        self.layer = XiTiledLayer()
+//        self.layer = CALayer()
+        self.wantsLayer = true
+        self.layer?.delegate = self
+        self.layerContentsRedrawPolicy = .onSetNeedsDisplay
     }
 
     let x0: CGFloat = 2;
+    
+    var boundsChangeTime: UInt64 = 0
+    var expectedFrameTime: UInt64 = 0
+    
+    func draw(_ layer: CALayer, in ctx: CGContext) {
+//        let now = mach_absolute_time()
+//        let minNowExpected = min(now, expectedFrameTime)
+//        let deltaExpected =  Int((expectedFrameTime.unsafeSubtracting(minNowExpected))) - Int((now.unsafeSubtracting(minNowExpected)))
+//        let threadID = pthread_mach_thread_np(pthread_self());
+//        print("draw in thread \(threadID) bounds: \(ctx.boundingBoxOfClipPath) deltaT: \((now - boundsChangeTime).unsafeDivided(by: 1000))us deltaExp: \(deltaExpected/1000)us")
 
-    override func draw(_ dirtyRect: NSRect) {
-        if dataSource.document.coreViewIdentifier == nil { return }
-        super.draw(dirtyRect)
+//                let randomColor = NSColor(red: CGFloat(drand48()),
+//                                          green: CGFloat(drand48()),
+//                                          blue: CGFloat(drand48()),
+//                                          alpha: 1)
+//                ctx.setFillColor(randomColor.cgColor)
+        //        //randomize ellipse size:
+        //        let ellipseRect = drawBounds.insetBy(dx: 200 * CGFloat(drand48()), dy: 200 * CGFloat(drand48()))
+        //        ctx.addEllipse(in: ellipseRect)
+        //        ctx.fillPath()
+        
+        layer.backgroundColor = dataSource.theme.background.cgColor
+        let drawBounds = ctx.boundingBoxOfClipPath
+        ctx.setFillColor(dataSource.theme.background.cgColor)
+        ctx.fill(drawBounds)
+        
 
-        // draw the background
-        let context = NSGraphicsContext.current!.cgContext
-        dataSource.theme.background.setFill()
-        dirtyRect.fill()
 
-        // uncomment this to visualize dirty rects
-        /*
-        let path = NSBezierPath(ovalIn: dirtyRect)
-        NSColor(red: CGFloat(drand48()), green: CGFloat(drand48()), blue: CGFloat(drand48()), alpha: 0.25).setFill()
-        path.fill()
-        */
 
+        
+        
         let topPad = dataSource.textMetrics.linespace - dataSource.textMetrics.ascent
-        let first = max(0, Int((floor(dirtyRect.origin.y - topPad) / dataSource.textMetrics.linespace)))
-        let last = Int(ceil((dirtyRect.origin.y + dirtyRect.size.height - topPad) / dataSource.textMetrics.linespace))
-
+        let first = max(0, Int((floor(drawBounds.origin.y - topPad) / dataSource.textMetrics.linespace)))
+        let last = Int(ceil((drawBounds.origin.y + drawBounds.size.height - topPad) / dataSource.textMetrics.linespace))
+        
         let missing = dataSource.lines.computeMissing(first, last)
         for (f, l) in missing {
-            Swift.print("requesting missing: \(f)..\(l)")
-            dataSource.document.sendRpcAsync("request_lines", params: [f, l])
+            Swift.print("missing: \(f)..\(l)")
+//            dataSource.document.requestLines(first: first, last: last)
         }
 
-        // first pass, for drawing background selections and search highlights
         for lineIx in first..<last {
-            guard let line = getLine(lineIx), line.containsReservedStyle == true else { continue }
-            let attrString = NSMutableAttributedString(string: line.text, attributes: dataSource.textMetrics.attributes)
-            let ctline = CTLineCreateWithAttributedString(attrString)
+            guard let line = getLine(lineIx), line.containsReservedStyle == true else {
+                continue
+            }
+//            let attrString = NSMutableAttributedString(string: line.text, attributes: dataSource.textMetrics.attributes)
+//            let ctline = CTLineCreateWithAttributedString(attrString)
             let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1)
             //TODO: also draw line highlight, as dictated by theme
             let selectionColor = self.isFrontmostView ? dataSource.theme.selection : dataSource.theme.inactiveSelection ?? dataSource.theme.selection
-            selectionColor.setFill()
+            ctx.setFillColor(selectionColor.cgColor)
             let selections = line.styles.filter { $0.style == 0 }
             for selection in selections {
-                let selStart = CTLineGetOffsetForStringIndex(ctline, selection.range.location, nil)
-                let selEnd = CTLineGetOffsetForStringIndex(ctline, selection.range.location + selection.range.length, nil)
-                context.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
+                let selStart = CTLineGetOffsetForStringIndex(line.styledLine, selection.range.location, nil)
+                let selEnd = CTLineGetOffsetForStringIndex(line.styledLine, selection.range.location + selection.range.length, nil)
+                ctx.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
                                     width: selEnd - selStart, height: dataSource.textMetrics.linespace))
             }
-
-            dataSource.theme.findHighlight.setFill()
+            
+            ctx.setFillColor(dataSource.theme.findHighlight.cgColor)
             let highlights = line.styles.filter { $0.style == 1 }
             for highlight in highlights {
-                let selStart = CTLineGetOffsetForStringIndex(ctline, highlight.range.location, nil)
-                let selEnd = CTLineGetOffsetForStringIndex(ctline, highlight.range.location + highlight.range.length, nil)
-                context.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
+                let selStart = CTLineGetOffsetForStringIndex(line.styledLine, highlight.range.location, nil)
+                let selEnd = CTLineGetOffsetForStringIndex(line.styledLine, highlight.range.location + highlight.range.length, nil)
+                ctx.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
                                     width: selEnd - selStart, height: dataSource.textMetrics.linespace))
             }
         }
+        
+        
         // second pass, for actually rendering text.
         for lineIx in first..<last {
             // TODO: could block for ~1ms waiting for missing lines to arrive
-            guard let line = getLine(lineIx) else { continue }
+            guard let line = getLine(lineIx) else {
+                let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1);
+                let missing = NSRect(x: x0, y: y, width: drawBounds.origin.x + drawBounds.width - x0, height: 14)
+                ctx.setFillColor(NSColor.red.cgColor)
+                ctx.fill(missing)
+                continue
+            }
+            
             let s = line.text
-            var attrString = NSMutableAttributedString(string: s, attributes: dataSource.textMetrics.attributes)
+//            var attrString = NSMutableAttributedString(string: s, attributes: dataSource.textMetrics.attributes)
             /*
-            let randcolor = NSColor(colorLiteralRed: Float(drand48()), green: Float(drand48()), blue: Float(drand48()), alpha: 1.0)
-            attrString.addAttribute(NSForegroundColorAttributeName, value: randcolor, range: NSMakeRange(0, s.utf16.count))
-            */
-            dataSource.styleMap.applyStyles(text: s, string: &attrString, styles: line.styles)
-            for c in line.cursor {
-                let cix = utf8_offset_to_utf16(s, c)
+             let randcolor = NSColor(colorLiteralRed: Float(drand48()), green: Float(drand48()), blue: Float(drand48()), alpha: 1.0)
+             attrString.addAttribute(NSForegroundColorAttributeName, value: randcolor, range: NSMakeRange(0, s.utf16.count))
+             */
+//            dataSource.styleMap.applyStyles(text: s, string: &attrString, styles: line.styles)
 
-                self.cursorPos = (lineIx, cix)
+            let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1);
+            
+//            let lineToPaint = CTLineCreateWithAttributedString(attrString);
+            ctx.textMatrix = CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: x0, ty: y)
+            ctx.move(to: CGPoint(x: x0, y: y))
+            CTLineDraw(line.styledLine, ctx)
+            
+//            let lineNo = NSAttributedString(string: "\(lineIx)")
+//            var ctLineNo = CTLineCreateWithAttributedString(lineNo)
+//            ctx.move(to: CGPoint(x: 0, y: y))
+//            CTLineDraw(ctLineNo, ctx)
+            
+            
+            
+            
+            for c in line.cursor {
+                var cursorUTF16Idx = 0
+                var cursorXPos: CGFloat = 0
+                if c > 0 {
+                    cursorUTF16Idx = utf8_offset_to_utf16(s, c)
+                    cursorXPos = CTLineGetOffsetForStringIndex(line.styledLine, CFIndex(cursorUTF16Idx), nil)
+                }
+                
+            ctx.setStrokeColor(cursorColor.cgColor)
+            ctx.setShouldAntialias(false)
+            ctx.move(to: CGPoint(x: x0 + cursorXPos, y: y + dataSource.textMetrics.descent))
+            ctx.addLine(to: CGPoint(x: x0 + cursorXPos, y: y - dataSource.textMetrics.ascent))
+            ctx.strokePath()
+            ctx.setShouldAntialias(true)
+                
+                
+                self.cursorPos = (lineIx, cursorUTF16Idx)
                 if (markedRange().location != NSNotFound) {
-                    let markRangeStart = cix - markedRange().length
+                    let markRangeStart = cursorUTF16Idx - markedRange().length
                     if (markRangeStart >= 0) {
-                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
-                                                value: NSUnderlineStyle.styleSingle.rawValue,
-                                                range: NSMakeRange(markRangeStart, markedRange().length))
+                        //FIXME: draw IME manually?
+//                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
+//                                                value: NSUnderlineStyle.styleSingle.rawValue,
+//                                                range: NSMakeRange(markRangeStart, markedRange().length))
                     }
                 }
                 if (selectedRange().location != NSNotFound) {
-                    let selectedRangeStart = cix - markedRange().length + selectedRange().location
+                    let selectedRangeStart = cursorUTF16Idx - markedRange().length + selectedRange().location
                     if (selectedRangeStart >= 0) {
-                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
-                                                value: NSUnderlineStyle.styleThick.rawValue,
-                                                range: NSMakeRange(selectedRangeStart, selectedRange().length))
+//                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
+//                                                value: NSUnderlineStyle.styleThick.rawValue,
+//                                                range: NSMakeRange(selectedRangeStart, selectedRange().length))
                     }
                 }
             }
+            
 
-            let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1);
-            attrString.draw(with: NSRect(x: x0, y: y, width: dirtyRect.origin.x + dirtyRect.width - x0, height: 14), options: [])
-            if showBlinkingCursor && _cursorStateOn {
-                for cursor in line.cursor {
-                    let ctline = CTLineCreateWithAttributedString(attrString)
-                    /*
-                    CGContextSetTextMatrix(context, CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: x0, ty: y))
-                    CTLineDraw(ctline, context)
-                    */
-                    var pos = CGFloat(0)
-                    // special case because measurement is so expensive; might have to rethink in rtl
-                    if cursor != 0 {
-                        let utf16_ix = utf8_offset_to_utf16(s, cursor)
-                        pos = CTLineGetOffsetForStringIndex(ctline, CFIndex(utf16_ix), nil)
-                    }
-                    cursorColor.setStroke()
-                    context.setShouldAntialias(false)
-                    context.move(to: CGPoint(x: x0 + pos, y: y + dataSource.textMetrics.descent))
-                    context.addLine(to: CGPoint(x: x0 + pos, y: y - dataSource.textMetrics.ascent))
-                    context.strokePath()
-                    context.setShouldAntialias(true)
-                }
+            
+//            attrString.draw(with: NSRect(x: x0, y: y, width: drawBounds.origin.x + drawBounds.width - x0, height: 14), options: [])
+            if showBlinkingCursor {
+
             }
         }
     }
+
+    
+//    override func draw(_ dirtyRect: NSRect) {
+//
+//        print("drawrect \(dirtyRect)")
+//        if dataSource.document.coreViewIdentifier == nil { return }
+//        super.draw(dirtyRect)
+//
+//        // draw the background
+//        let context = NSGraphicsContext.current!.cgContext
+//        dataSource.theme.background.setFill()
+//        dirtyRect.fill()
+//
+//        // uncomment this to visualize dirty rects
+//        /*
+//        let path = NSBezierPath(ovalIn: dirtyRect)
+//        NSColor(red: CGFloat(drand48()), green: CGFloat(drand48()), blue: CGFloat(drand48()), alpha: 0.25).setFill()
+//        path.fill()
+//        */
+//
+//        let topPad = dataSource.textMetrics.linespace - dataSource.textMetrics.ascent
+//        let first = max(0, Int((floor(dirtyRect.origin.y - topPad) / dataSource.textMetrics.linespace)))
+//        let last = Int(ceil((dirtyRect.origin.y + dirtyRect.size.height - topPad) / dataSource.textMetrics.linespace))
+//
+//        let missing = dataSource.lines.computeMissing(first, last)
+//        for (f, l) in missing {
+//            Swift.print("requesting missing: \(f)..\(l)")
+//            dataSource.document.requestLines(first: first, last: last)
+//        }
+//
+//        // first pass, for drawing background selections and search highlights
+//        for lineIx in first..<last {
+//            guard let line = getLine(lineIx), line.containsReservedStyle == true else { continue }
+//            let attrString = NSMutableAttributedString(string: line.text, attributes: dataSource.textMetrics.attributes)
+//            let ctline = CTLineCreateWithAttributedString(attrString)
+//            let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1)
+//            //TODO: also draw line highlight, as dictated by theme
+//            let selectionColor = self.isFrontmostView ? dataSource.theme.selection : dataSource.theme.inactiveSelection ?? dataSource.theme.selection
+//            selectionColor.setFill()
+//            let selections = line.styles.filter { $0.style == 0 }
+//            for selection in selections {
+//                let selStart = CTLineGetOffsetForStringIndex(ctline, selection.range.location, nil)
+//                let selEnd = CTLineGetOffsetForStringIndex(ctline, selection.range.location + selection.range.length, nil)
+//                context.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
+//                                    width: selEnd - selStart, height: dataSource.textMetrics.linespace))
+//            }
+//
+//            dataSource.theme.findHighlight.setFill()
+//            let highlights = line.styles.filter { $0.style == 1 }
+//            for highlight in highlights {
+//                let selStart = CTLineGetOffsetForStringIndex(ctline, highlight.range.location, nil)
+//                let selEnd = CTLineGetOffsetForStringIndex(ctline, highlight.range.location + highlight.range.length, nil)
+//                context.fill(CGRect(x: x0 + selStart, y: y - dataSource.textMetrics.ascent,
+//                                    width: selEnd - selStart, height: dataSource.textMetrics.linespace))
+//            }
+//        }
+//        // second pass, for actually rendering text.
+//        for lineIx in first..<last {
+//            // TODO: could block for ~1ms waiting for missing lines to arrive
+//            guard let line = getLine(lineIx) else { continue }
+//            let s = line.text
+//            var attrString = NSMutableAttributedString(string: s, attributes: dataSource.textMetrics.attributes)
+//            /*
+//            let randcolor = NSColor(colorLiteralRed: Float(drand48()), green: Float(drand48()), blue: Float(drand48()), alpha: 1.0)
+//            attrString.addAttribute(NSForegroundColorAttributeName, value: randcolor, range: NSMakeRange(0, s.utf16.count))
+//            */
+//            dataSource.styleMap.applyStyles(text: s, string: &attrString, styles: line.styles)
+//            for c in line.cursor {
+//                let cix = utf8_offset_to_utf16(s, c)
+//
+//                self.cursorPos = (lineIx, cix)
+//                if (markedRange().location != NSNotFound) {
+//                    let markRangeStart = cix - markedRange().length
+//                    if (markRangeStart >= 0) {
+//                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
+//                                                value: NSUnderlineStyle.styleSingle.rawValue,
+//                                                range: NSMakeRange(markRangeStart, markedRange().length))
+//                    }
+//                }
+//                if (selectedRange().location != NSNotFound) {
+//                    let selectedRangeStart = cix - markedRange().length + selectedRange().location
+//                    if (selectedRangeStart >= 0) {
+//                        attrString.addAttribute(NSAttributedStringKey.underlineStyle,
+//                                                value: NSUnderlineStyle.styleThick.rawValue,
+//                                                range: NSMakeRange(selectedRangeStart, selectedRange().length))
+//                    }
+//                }
+//            }
+//
+//            let y = dataSource.textMetrics.linespace * CGFloat(lineIx + 1);
+//            attrString.draw(with: NSRect(x: x0, y: y, width: dirtyRect.origin.x + dirtyRect.width - x0, height: 14), options: [])
+//            if showBlinkingCursor && _cursorStateOn {
+//                for cursor in line.cursor {
+//                    let ctline = CTLineCreateWithAttributedString(attrString)
+//                    /*
+//                    CGContextSetTextMatrix(context, CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: x0, ty: y))
+//                    CTLineDraw(ctline, context)
+//                    */
+//                    var pos = CGFloat(0)
+//                    // special case because measurement is so expensive; might have to rethink in rtl
+//                    if cursor != 0 {
+//                        let utf16_ix = utf8_offset_to_utf16(s, cursor)
+//                        pos = CTLineGetOffsetForStringIndex(ctline, CFIndex(utf16_ix), nil)
+//                    }
+//                    cursorColor.setStroke()
+//                    context.setShouldAntialias(false)
+//                    context.move(to: CGPoint(x: x0 + pos, y: y + dataSource.textMetrics.descent))
+//                    context.addLine(to: CGPoint(x: x0 + pos, y: y - dataSource.textMetrics.ascent))
+//                    context.strokePath()
+//                    context.setShouldAntialias(true)
+//                }
+//            }
+//        }
+//    }
 
     override var acceptsFirstResponder: Bool {
         return true;
@@ -443,10 +615,10 @@ class EditView: NSView, NSTextInputClient {
     }
     
     /// timer callback to toggle the blink state
-    @objc func _blinkInsertionPoint() {
-        _cursorStateOn = !_cursorStateOn
-        partialInvalidate(invalid: dataSource.lines.cursorInval)
-    }
+//    @objc func _blinkInsertionPoint() {
+//        _cursorStateOn = !_cursorStateOn
+//        partialInvalidate(invalid: dataSource.lines.cursorInval)
+//    }
 
     // TODO: more functions should call this, just dividing by linespace doesn't account for descent
     func yToLine(_ y: CGFloat) -> Int {

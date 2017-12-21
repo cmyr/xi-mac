@@ -215,8 +215,8 @@ class Document: NSDocument {
     
 //    var prevRequest = (0, 0)
     func requestLines(first: Int, last: Int) {
-        if (first, last) == prevRequest { return }
-        prevRequest = (first, last)
+//        if (first, last) == prevRequest { return }
+//        prevRequest = (first, last)
         sendRpcAsync("request_lines", params: [first, last])
     }
 

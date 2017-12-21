@@ -110,6 +110,34 @@ class EditViewController: NSViewController, EditViewDataSource, FindDelegate {
     /// handles autoscrolling when a drag gesture exists the window
     private var dragTimer: Timer?
     private var dragEvent: NSEvent?
+    
+    var displayLink: CVDisplayLink?
+    // system time, in ns
+    var nextFrameTime: UInt64 = 0
+    var timeToNextFrame: UInt64 = 0 {
+        didSet {
+            //what to do?
+        }
+    }
+    
+    func setupDisplayLink() {
+        let displayID = CGMainDisplayID()
+        let err = CVDisplayLinkCreateWithCGDisplay(displayID, &self.displayLink)
+        if err != kCVReturnSuccess {
+            fatalError("idk man")
+        }
+        
+        CVDisplayLinkSetOutputHandler(self.displayLink!) { (displayLink, nowTime, outputTime, flagsIn, flagsOut) -> CVReturn in
+            self.nextFrameTime = outputTime.pointee.hostTime
+            self.editView.expectedFrameTime = outputTime.pointee.hostTime
+//            self.editView.nextDrawTime = outputTime.pointee.hostTime
+            self.timeToNextFrame = outputTime.pointee.hostTime - nowTime.pointee.hostTime
+            //            let now = mach_absolute_time()
+            //            print("next Frame: \(timeTilNext), \(outputTime.pointee.hostTime - now)")
+            return 0
+        }
+        CVDisplayLinkStart(displayLink!)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -118,12 +146,17 @@ class EditViewController: NSViewController, EditViewDataSource, FindDelegate {
         lines.dataSource = self
         scrollView.contentView.documentCursor = NSCursor.iBeam;
         scrollView.automaticallyAdjustsContentInsets = false
+//        self.setupDisplayLink()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
         NotificationCenter.default.addObserver(self, selector: #selector(EditViewController.boundsDidChangeNotification(_:)), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
         NotificationCenter.default.addObserver(self, selector: #selector(EditViewController.frameDidChangeNotification(_:)), name: NSView.frameDidChangeNotification, object: scrollView)
+//        NotificationCenter.default.addObserver(self, selector: #selector(EditViewController.liveScrollNotification(_:)), name: NSScrollView.didLiveScrollNotification, object: scrollView)
+//        NotificationCenter.default.addObserver(self, selector: #selector(EditViewController.liveScrollNotification(_:)), name: NSScrollView.didEndLiveScrollNotification, object: scrollView)
+//        NotificationCenter.default.addObserver(self, selector: #selector(EditViewController.liveScrollNotification(_:)), name: NSScrollView.willStartLiveScrollNotification, object: scrollView)
+        
         // call to set initial scroll position once we know view size
         updateEditViewScroll()
     }
@@ -135,6 +168,7 @@ class EditViewController: NSViewController, EditViewDataSource, FindDelegate {
     }
     
     @objc func boundsDidChangeNotification(_ notification: Notification) {
+        editView.contentViewBounds = scrollView.contentView.bounds
         updateEditViewScroll()
     }
     
@@ -142,14 +176,58 @@ class EditViewController: NSViewController, EditViewDataSource, FindDelegate {
         updateEditViewScroll()
     }
 
+  
+
+//    @objc func liveScrollNotification(_ notification: Notification) {
+//        switch notification.name {
+//        case NSScrollView.willStartLiveScrollNotification:
+//            liveScrollStuff = (scrollView.contentView.bounds, mach_absolute_time())
+//        case NSScrollView.didEndLiveScrollNotification:
+//            liveScrollStuff = nil
+//        default:
+//            break
+//
+//        }
+////        updateEditViewScroll()
+//    }
+
+    // first/last line and timestamp
+    var liveScrollStuff: ((Int, Int), UInt64)?
+    var lastScrollTime: UInt64 = 0
+
+    let PREFETCH_SIZE = 100
     func updateEditViewScroll() {
+        editView.contentViewBounds = scrollView.contentView.bounds
+        editView.boundsChangeTime = mach_absolute_time()
         let first = Int(floor(scrollView.contentView.bounds.origin.y / textMetrics.linespace))
         let height = Int(ceil((scrollView.contentView.bounds.size.height) / textMetrics.linespace))
         let last = first + height
         if first != firstLine || last != lastLine {
+            let now = mach_absolute_time()
+            let deltaT = now - lastScrollTime
+            
+            if deltaT < 5_000_000 {
+                print("skipping scroll")
+                return
+            }
+            document.sendRpcAsync("scroll", params: [first, last])
+            
+            if deltaT < 100_000_000 && first - last == firstLine - lastLine {
+                let deltaD = last - lastLine
+                // arbitrary: how many lines we expect to need in next 20ms
+                let requestSize = deltaD * Int(20_000_000 / deltaT)
+                let reqLines = (deltaD > 0) ? (last, last + requestSize) : (max(0, first - requestSize), first)
+                print("anticipating \(reqLines)")
+                let missing = lines.computeMissing(reqLines.0, reqLines.1)
+                for (f, l) in missing {
+                    print("prefetching \(f), \(l)")
+                    document.requestLines(first: f, last: l)
+                }
+            }
+//            }
+            lastScrollTime = now
             firstLine = first
             lastLine = last
-            document.sendRpcAsync("scroll", params: [firstLine, lastLine])
         }
         // if the window is resized, update the editViewHeight so we don't show scrollers unnecessarily
         updateEditViewHeight()
