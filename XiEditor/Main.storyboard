@@ -183,7 +183,7 @@ Gw
         <scene sceneID="CRJ-r2-SVm">
             <objects>
                 <viewController storyboardIdentifier="Find View Controller" id="lKE-xV-0EG" customClass="FindViewController" customModule="XiEditor" customModuleProvider="target" sceneMemberID="viewController">
-                    <view key="view" id="NrM-ac-2ZW" wantsLayer="YES">
+                    <view key="view" wantsLayer="YES" id="NrM-ac-2ZW">
                         <rect key="frame" x="0.0" y="0.0" width="600" height="56"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" flexibleMinY="YES" flexibleMaxY="YES"/>
                         <subviews>
@@ -1019,6 +1019,12 @@ Gw
                                                         <string key="NSValueTransformerName">BoolToControlStateValueTransformer</string>
                                                     </dictionary>
                                                 </binding>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem title="Request Completions" keyEquivalent="" id="5OD-U4-xjb">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                            <connections>
+                                                <action selector="debugRequestCompletions:" target="7er-QZ-amI" id="LBN-Np-RE6"/>
                                             </connections>
                                         </menuItem>
                                         <menuItem title="Benchmark Scrolling" id="QAT-w6-S4U">

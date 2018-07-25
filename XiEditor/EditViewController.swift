@@ -598,6 +598,10 @@ class EditViewController: NSViewController, EditViewDataSource, FindDelegate, Sc
         document.sendRpcAsync("debug_print_spans", params: [])
     }
 
+    @IBAction func debugRequestCompletions(_ sender: AnyObject) {
+        document.sendRpcAsync("completions_show", params: [])
+    }
+
     @IBAction func debugOverrideWhitespace(_ sender: NSMenuItem) {
         var changes = [String: Any]()
         switch sender.title {

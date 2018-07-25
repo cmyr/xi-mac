@@ -310,6 +310,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, XiClient {
         }
     }
 
+    func completions(viewIdentifier: String, pos: Int, selected: Int, items: [[String : AnyObject]]) {
+        print("completions: \(items.map() { $0["label"] as! String })")
+    }
+
+    func hideCompletions(viewIdentifier: String) {
+        print("hide completions")
+    }
+
     func addStatusItem(viewIdentifier: String, source: String, key: String, value: String, alignment: String) {
         let document = documentForViewIdentifier(viewIdentifier: viewIdentifier)
         DispatchQueue.main.async {

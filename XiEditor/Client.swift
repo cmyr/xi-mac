@@ -54,6 +54,10 @@ protocol XiClient: AnyObject {
     /// A notification containing an alert message to be shown the user.
     func alert(text: String);
 
+    func completions(viewIdentifier: String, pos: Int, selected: Int, items: [[String: AnyObject]]);
+
+    func hideCompletions(viewIdentifier: String);
+
     /// A list of notifications that manages status items.
     /// Keys are unique, and alignment (left or right) cannot be
     /// changed after creating the status item.

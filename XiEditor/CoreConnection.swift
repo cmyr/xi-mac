@@ -314,6 +314,15 @@ class CoreConnection {
             let message = params["msg"] as! String
             client?.alert(text: message)
 
+        case "completions":
+            let pos = params["pos"] as! Int
+            let selected = params["selected"] as! Int
+            let items = params["items"] as! [[String: AnyObject]]
+            client?.completions(viewIdentifier: viewIdentifier!, pos: pos, selected: selected, items: items)
+
+        case "hide_completions":
+            client?.hideCompletions(viewIdentifier: viewIdentifier!)
+
         case "add_status_item":
             let source = params["source"] as! String
             let key = params["key"] as! String
